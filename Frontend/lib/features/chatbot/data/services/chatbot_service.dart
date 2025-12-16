@@ -31,6 +31,7 @@ class ChatbotService {
   Future<String> sendMessage({
     required String question,
     required String sessionId,
+    required int userId,
   }) async {
     try {
       final response = await _dio.post(
@@ -38,6 +39,7 @@ class ChatbotService {
         data: {
           'question': question,
           'session_id': sessionId,
+          'user_id': userId,
         },
       );
 

@@ -39,6 +39,7 @@ memory = None
 class ChatRequest(BaseModel):
     question: str
     session_id: Optional[str] = "default"
+    user_id: int  # Required userId from frontend
 
 
 class ChatResponse(BaseModel):
@@ -113,9 +114,9 @@ async def chat(
         user_info = get_current_user(credentials)
         logger.info(f"Chat request from user: {user_info['email']}")
 
-        # Create backend client with the auth token
+        # Create backend client with the auth token and userId
         auth_token = credentials.credentials
-        backend_client = BackendClient(auth_token)
+        backend_client = BackendClient(auth_token, request.user_id)
 
         # Create retriever tool for financial knowledge
         retriever = vector_store.as_retriever()
@@ -127,11 +128,14 @@ async def chat(
             Use this when the user asks for general financial advice, budgeting tips,
             saving strategies, or other financial guidance.
             """
+            logger.info(f"🔧 TOOL CALLED: retrieve_financial_knowledge(query='{query}')")
             retrieved_docs = retriever.invoke(query)
+            logger.info(f"📚 RAG retrieved {len(retrieved_docs)} documents")
             serialized = "\n\n".join(
                 (f"Source: {doc.metadata}\nContent: {doc.page_content}")
                 for doc in retrieved_docs
             )
+            logger.info(f"✅ RAG knowledge retrieved successfully")
             return serialized
 
         # Get all backend tools (transactions, categories, analytics)
@@ -163,6 +167,9 @@ async def chat(
         )
 
         # Invoke the agent with message history
+        logger.info(f"🤖 Invoking agent with question: '{request.question}'")
+        logger.info(f"📝 Session ID: {request.session_id}, User ID: {request.user_id}")
+
         result = agent_executor.invoke(
             {"messages": [("user", request.question)]},
             config={"configurable": {"thread_id": request.session_id}}
@@ -170,6 +177,8 @@ async def chat(
 
         # Extract the answer from the agent's messages
         answer = result["messages"][-1].content
+        logger.info(f"✅ Agent response generated successfully")
+        logger.info(f"📤 Response length: {len(answer)} characters")
 
         return ChatResponse(answer=answer, session_id=request.session_id)
 

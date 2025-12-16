@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_sidebar.dart';
 import '../../../../core/utils/responsive_helper.dart';
 import '../../../../core/constants.dart';
 import '../../../../shared/widgets/user_avatar_menu.dart';
+import '../../../auth/domain/providers/auth_provider.dart';
 import '../../domain/providers/chatbot_provider.dart';
 
 class ChatbotScreen extends ConsumerStatefulWidget {
@@ -494,13 +495,19 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     });
 
     try {
-      // Get chatbot service
+      // Get chatbot service and user ID
       final chatbotService = ref.read(chatbotServiceProvider);
+      final userId = ref.read(userIdProvider);
+
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
 
       // Send message to backend
       final response = await chatbotService.sendMessage(
         question: text,
         sessionId: _sessionId,
+        userId: userId,
       );
 
       // Add bot response to chat

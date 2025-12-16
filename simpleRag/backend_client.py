@@ -4,6 +4,10 @@ HTTP client for communicating with Spring Boot backend.
 import httpx
 from typing import Optional, Dict, Any, List
 import os
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Spring Boot backend URL
 BACKEND_URL = os.getenv("SPRING_BOOT_URL", "http://localhost:8085")
@@ -13,19 +17,22 @@ API_BASE = f"{BACKEND_URL}/api"
 class BackendClient:
     """Client for making requests to Spring Boot backend."""
 
-    def __init__(self, auth_token: str):
+    def __init__(self, auth_token: str, user_id: int):
         """
-        Initialize backend client with auth token.
+        Initialize backend client with auth token and user ID.
 
         Args:
             auth_token: JWT token to forward to Spring Boot
+            user_id: User ID to include in requests
         """
         self.auth_token = auth_token
+        self.user_id = user_id
         self.headers = {
             "Authorization": f"Bearer {auth_token}",
             "Content-Type": "application/json"
         }
         self.client = httpx.Client(timeout=30.0)
+        logger.info(f"🔐 BackendClient initialized for userId={user_id}")
 
     def __del__(self):
         """Close the HTTP client."""
@@ -34,7 +41,8 @@ class BackendClient:
     # Transaction endpoints
     def get_transactions(self, limit: Optional[int] = None, type: Optional[str] = None) -> List[Dict]:
         """Get user's transactions."""
-        params = {}
+        logger.info(f"📋 Getting transactions (userId={self.user_id}, limit={limit}, type={type})")
+        params = {"userId": self.user_id}
         if limit:
             params["limit"] = limit
         if type:
@@ -45,8 +53,11 @@ class BackendClient:
             headers=self.headers,
             params=params
         )
+        logger.info(f"✅ Got {response.status_code} from GET /transactions")
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logger.info(f"📊 Retrieved {len(result)} transactions")
+        return result
 
     def get_transaction(self, transaction_id: int) -> Dict:
         """Get a specific transaction by ID."""
@@ -69,6 +80,7 @@ class BackendClient:
         recurrence_frequency: Optional[str] = None
     ) -> Dict:
         """Create a new transaction."""
+        logger.info(f"💰 Creating {type} transaction for userId={self.user_id}: {description} - {amount} MAD")
         data = {
             "amount": abs(amount),  # Spring Boot handles sign based on type
             "description": description,
@@ -87,10 +99,14 @@ class BackendClient:
         response = self.client.post(
             f"{API_BASE}/transactions",
             headers=self.headers,
+            params={"userId": self.user_id},
             json=data
         )
+        logger.info(f"✅ Got {response.status_code} from POST /transactions")
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logger.info(f"✅ Transaction created successfully (ID: {result.get('id')})")
+        return result
 
     def update_transaction(
         self,
@@ -134,7 +150,8 @@ class BackendClient:
     # Category endpoints
     def get_categories(self, type: Optional[str] = None) -> List[Dict]:
         """Get available categories."""
-        params = {}
+        logger.info(f"🏷️  Getting categories for userId={self.user_id} (type={type})")
+        params = {"userId": self.user_id}
         if type:
             params["type"] = type
 
@@ -143,11 +160,15 @@ class BackendClient:
             headers=self.headers,
             params=params
         )
+        logger.info(f"✅ Got {response.status_code} from GET /categories")
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logger.info(f"📋 Retrieved {len(result)} categories")
+        return result
 
     def create_category(self, name: str, type: str) -> Dict:
         """Create a new category."""
+        logger.info(f"🏷️  Creating category for userId={self.user_id}: {name} ({type})")
         data = {
             "name": name,
             "type": type.upper()
@@ -156,42 +177,57 @@ class BackendClient:
         response = self.client.post(
             f"{API_BASE}/categories",
             headers=self.headers,
+            params={"userId": self.user_id},
             json=data
         )
+        logger.info(f"✅ Got {response.status_code} from POST /categories")
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logger.info(f"✅ Category created successfully (ID: {result.get('id')})")
+        return result
 
     # Dashboard/Analytics endpoints
     def get_dashboard_summary(self) -> Dict:
         """Get dashboard summary (balance, income, expenses)."""
+        logger.info(f"📊 Getting dashboard summary for userId={self.user_id}")
         response = self.client.get(
-            f"{API_BASE}/transactions/balance",
-            headers=self.headers
-        )
-        response.raise_for_status()
-        return response.json()
-
-    def get_monthly_summary(self, month: Optional[int] = None, year: Optional[int] = None) -> Dict:
-        """Get monthly income/expense summary."""
-        params = {}
-        if month:
-            params["month"] = month
-        if year:
-            params["year"] = year
-
-        response = self.client.get(
-            f"{API_BASE}/transactions/monthly-summary",
+            f"{API_BASE}/transactions/dashboard/balance",
             headers=self.headers,
-            params=params
+            params={"userId": self.user_id}
         )
+        logger.info(f"✅ Got {response.status_code} from GET /transactions/dashboard/balance")
+        if response.status_code == 403:
+            logger.error(f"❌ 403 Forbidden - Check userId={self.user_id} and auth token")
+            logger.error(f"Response body: {response.text}")
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logger.info(f"📈 Dashboard: balance={result.get('currentBalance')}, income={result.get('totalIncome')}, expenses={result.get('totalExpense')}")
+        return result
 
-    def get_spending_by_category(self) -> List[Dict]:
-        """Get spending grouped by category."""
+    def get_monthly_summary(self, year: int) -> List[Dict]:
+        """Get monthly income/expense summary for the year."""
+        logger.info(f"📅 Getting monthly summary for userId={self.user_id}, year={year}")
         response = self.client.get(
-            f"{API_BASE}/transactions/spending-by-category",
-            headers=self.headers
+            f"{API_BASE}/transactions/dashboard/monthly-summary",
+            headers=self.headers,
+            params={"userId": self.user_id, "year": year}
         )
+        logger.info(f"✅ Got {response.status_code} from GET /transactions/dashboard/monthly-summary")
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logger.info(f"📊 Retrieved monthly summary with {len(result)} months")
+        return result
+
+    def get_spending_by_category(self) -> Dict:
+        """Get spending grouped by category."""
+        logger.info(f"📊 Getting spending by category for userId={self.user_id}")
+        response = self.client.get(
+            f"{API_BASE}/transactions/dashboard/spending-categories",
+            headers=self.headers,
+            params={"userId": self.user_id}
+        )
+        logger.info(f"✅ Got {response.status_code} from GET /transactions/dashboard/spending-categories")
+        response.raise_for_status()
+        result = response.json()
+        logger.info(f"📊 Spending data: total={result.get('totalSpending')}, categories={len(result.get('categories', []))}")
+        return result
