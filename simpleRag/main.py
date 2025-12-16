@@ -1,4 +1,6 @@
 import os
+import traceback
+import logging
 from typing import Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
@@ -6,10 +8,14 @@ from pydantic import BaseModel
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 from langchain_groq import ChatGroq
-from langchain_core.tools.retriever import create_retriever_tool
-from langgraph.prebuilt import create_react_agent
+from langchain.tools import tool
+from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -49,14 +55,23 @@ async def lifespan(app: FastAPI):
     retriever = vector_store.as_retriever()
 
     # Build a retriever tool for the agent to call when it needs context
-    retriever_tool = create_retriever_tool(
-        retriever,
-        name="retrieve_context",
-        description="Search knowledge base for facts to answer questions."
-    )
+    @tool
+    def retrieve_context(query: str):
+        """Search knowledge base for facts to answer questions."""
+        retrieved_docs = retriever.invoke(query)
+        serialized = "\n\n".join(
+            (f"Source: {doc.metadata}\nContent: {doc.page_content}")
+            for doc in retrieved_docs
+        )
+        return serialized
 
-    # Initialize LLM
-    llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"))
+    # Initialize LLM with tool calling support
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        api_key=os.getenv("GROQ_API_KEY"),
+        temperature=0,  # Lower temperature for more consistent tool calling
+        max_retries=3   # Retry failed requests
+    )
 
     # Initialize memory saver for conversation history
     memory = MemorySaver()
@@ -69,11 +84,11 @@ async def lifespan(app: FastAPI):
     )
 
     # Assemble the agent with memory and system prompt
-    agent_executor = create_react_agent(
-        model=llm,
-        tools=[retriever_tool],
-        checkpointer=memory,
-        prompt=system_prompt
+    agent_executor = create_agent(
+        llm,
+        tools=[retrieve_context],
+        system_prompt=system_prompt,
+        checkpointer=memory
     )
 
     print("RAG system initialized!")
@@ -108,6 +123,8 @@ async def chat(request: ChatRequest):
         answer = result["messages"][-1].content
         return ChatResponse(answer=answer, session_id=request.session_id)
     except Exception as e:
+        logger.error(f"Error processing question '{request.question}': {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
 
 
