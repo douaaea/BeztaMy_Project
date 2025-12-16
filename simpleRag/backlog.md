@@ -1,125 +1,57 @@
-# SimpleRAG - Product Backlog
+# BeztaMy Financial Assistant - Project Status & Backlog
 
-> Report-friendly version for project documentation and stakeholder review
+## Partie 1: Résumé des Réalisations (Done)
 
-## ✅ Implemented Features
+> Technical summary of the implemented BeztaMy Intelligent Financial Assistant.
 
-### Core System
-- [x] RAG pipeline with document retrieval and LLM generation
-- [x] Chroma vector database for document embeddings
-- [x] Ollama embeddings (embeddinggemma:latest)
-- [x] Groq LLM integration (Llama 3.1 8B)
+### ✅ Implemented Features
 
-### API Endpoints
-- [x] `POST /chat` - Main chat endpoint with RAG
-- [x] `GET /health` - Health check and status
-- [x] `GET /chat/history/{session_id}` - View conversation history
-- [x] `DELETE /chat/history/{session_id}` - Clear session history
+**Core Intelligence**
 
-### Conversation Memory
-- [x] Session-based conversation management
-- [x] Multi-turn conversations with context awareness
-- [x] In-memory storage with session isolation
-- [x] LangChain conversation history integration
+- **Agentic Workflow**: LangGraph-based orchestration.
+- **Tool Calling**: Execution of backend actions (transactions, analytics).
+- **RAG Pipeline**: Context-aware answers using financial advice documents.
+- **Hybrid Memory**: Short-term context + long-term vector store.
 
-### Documentation & Testing
-- [x] Auto-generated API documentation (Swagger UI, ReDoc)
-- [x] Comprehensive README with examples
-- [x] Test suite covering all endpoints
-- [x] Type-safe request/response models
+**API & Integration**
+
+- **Direct Integration**: Flutter Frontend -> Python Agent (direct calls).
+- **Tool Integration**: Python Agent -> Spring Boot Backend (for data).
+- **Endpoints**: `/chat` (POST), `/health` (GET), `/chat/history` (GET/DELETE).
+- **Security**: JWT-based authentication passed through from Frontend to Backend.
+
+**Financial Capabilities**
+
+- **Transactions**: Add, update, delete via natural language.
+- **Analytics**: Real-time balance, spending breakdown, monthly summaries.
+
+### 🏗️ Architecture Overview
+
+**System Flow**:
+
+1.  **Flutter App** sends user question + Auth Token to **Python Agent**.
+2.  **Python Agent** interprets intent.
+    - If data needed: Calls **Spring Boot** using the Auth Token.
+    - If advice needed: Retrieves from **Chroma DB**.
+3.  **Spring Boot** acts as the secure data source of truth.
+
+```
+[Flutter App] --(Direct HTTP)--> [Python Agent] --(Tool Calls)--> [Spring Boot Backend]
+```
 
 ---
 
-## 📊 Technical Summary
+## Partie 2: Backlog des Tâches Réalisées
 
-**Architecture**: FastAPI + LangChain + Chroma + Groq
-**Language**: Python 3.12+
-**Framework**: FastAPI with async support
-**Database**: Chroma (vector store), in-memory (conversation)
-**LLM**: Groq Llama 3.1 8B Instant
-**Embeddings**: Ollama embeddinggemma:latest
+> Detailed log of completed tasks/features.
 
-## 🔧 Key Technical Components
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Web Framework | FastAPI | REST API and documentation |
-| LLM Orchestration | LangChain | RAG pipeline and memory |
-| Vector Database | Chroma | Document embeddings |
-| LLM Provider | Groq | Fast inference |
-| Embeddings | Ollama | Local embedding generation |
-| Server | Uvicorn | ASGI application server |
-
-## 📈 Project Metrics
-
-- **Endpoints**: 4 REST endpoints
-- **Documents**: 3 financial advice markdown files
-- **Test Coverage**: API integration tests included
-- **Documentation**: Auto-generated + comprehensive README
-- **Response Time**: <2s per query (avg)
-- **Memory**: Session-based with isolated contexts
-
----
-
-## 🏗️ Architecture Overview
-
-### System Integration
-
-```
-┌─────────────┐
-│   Flutter   │ (Mobile App)
-│  Frontend   │
-└──────┬──────┘
-       │
-       ↓ REST API
-┌─────────────┐
-│ Spring Boot │ (Main Backend)
-│   Backend   │
-├─────────────┤
-│ - Auth      │ ← Authentication & Authorization
-│ - CRUD      │ ← User/Data Management
-│ - Sessions  │ ← Session Management
-└──────┬──────┘
-       │
-       ↓ HTTP
-┌─────────────┐
-│   Python    │ (RAG Service)
-│   FastAPI   │
-├─────────────┤
-│ - RAG       │ ← Question Answering
-│ - Memory    │ ← Conversation Context
-│ - Retrieval │ ← Document Search
-└─────────────┘
-```
-
-### Responsibility Split
-
-**Spring Boot Backend (Main)**:
-- ✅ User authentication (JWT, OAuth)
-- ✅ Authorization and permissions
-- ✅ CRUD operations (users, data)
-- ✅ Database management
-- ✅ Session management
-- ✅ Business logic
-
-**Python FastAPI (RAG Service)**:
-- ✅ Question answering with RAG
-- ✅ Conversation memory (short-term)
-- ✅ Document retrieval
-- ✅ LLM integration
-- ✅ Vector search
-
-**Flutter Frontend**:
-- ✅ UI/UX
-- ✅ Session ID generation
-- ✅ API calls to Spring Boot
-- ✅ State management
-
-### Integration Flow
-
-1. **User Login**: Flutter → Spring Boot (authentication)
-2. **Start Chat**: Flutter generates `session_id`
-3. **Send Question**: Flutter → Spring Boot → Python FastAPI
-4. **Get Answer**: Python FastAPI → Spring Boot → Flutter
-5. **Session Management**: Spring Boot tracks user sessions
-6. **Conversation Context**: Python FastAPI manages chat memory per `session_id`
+| ID    | Type     | Summary                     | Description                                                     | Priority | Est. (SP) | Assignee | Status | Sprint   |
+| ----- | -------- | --------------------------- | --------------------------------------------------------------- | -------- | --------- | -------- | ------ | -------- |
+| PBI-1 | Feature  | Agentic Workflow            | Implement LangGraph agent with stateful memory                  | High     | 13        | Anouar   | Done   | Sprint 1 |
+| PBI-2 | Feature  | RAG Pipeline                | Integrate Chroma DB and Groq LLM for financial advice retrieval | High     | 8         | Anouar   | Done   | Sprint 1 |
+| PBI-3 | Feature  | Transaction Tools           | Implement tools for Adding, Updating, and Deleting transactions | High     | 8         | Anouar   | Done   | Sprint 2 |
+| PBI-4 | Feature  | Analytics Tools             | Implement tools for Balance, Spending Category, Monthly stats   | Medium   | 5         | Anouar   | Done   | Sprint 2 |
+| PBI-5 | Task     | Direct Frontend Integration | Connect Flutter App directly to Python API                      | High     | 5         | Anouar   | Done   | Sprint 2 |
+| PBI-6 | Security | Auth Integration            | Implement JWT token forwarding to Spring Boot Backend           | Critical | 5         | Anouar   | Done   | Sprint 1 |
+| PBI-7 | Task     | Docker Support              | Create Dockerfile for Python Agent                              | Low      | 3         | Anouar   | Done   | Sprint 1 |
+| PBI-8 | Task     | API Documentation           | Create comprehensive README and Swagger docs                    | Low      | 2         | Anouar   | Done   | Sprint 2 |
