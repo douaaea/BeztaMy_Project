@@ -5,6 +5,7 @@ import httpx
 from typing import Optional, Dict, Any, List
 import os
 import logging
+from datetime import date
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -74,28 +75,34 @@ class BackendClient:
         description: str,
         category_id: int,
         type: str,
-        date: Optional[str] = None,
+        transaction_date: Optional[str] = None,
         location: Optional[str] = None,
         recurring: bool = False,
         recurrence_frequency: Optional[str] = None
     ) -> Dict:
         """Create a new transaction."""
         logger.info(f"💰 Creating {type} transaction for userId={self.user_id}: {description} - {amount} MAD")
+
+        # transactionDate is required - default to today if not provided
+        if not transaction_date:
+            transaction_date = date.today().isoformat()
+            logger.info(f"📅 No date provided, using today: {transaction_date}")
+
         data = {
             "amount": abs(amount),  # Spring Boot handles sign based on type
             "description": description,
             "categoryId": category_id,
             "type": type.upper(),
-            "recurring": recurring
+            "transactionDate": transaction_date,  # Required field
+            "isRecurring": recurring
         }
 
-        if date:
-            data["date"] = date
         if location:
             data["location"] = location
         if recurring and recurrence_frequency:
-            data["recurrenceFrequency"] = recurrence_frequency
+            data["frequency"] = recurrence_frequency
 
+        logger.info(f"📦 Transaction data: {data}")
         response = self.client.post(
             f"{API_BASE}/transactions",
             headers=self.headers,

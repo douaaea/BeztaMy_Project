@@ -62,8 +62,12 @@ async def lifespan(app: FastAPI):
     )
 
     # Initialize LLM with tool calling support
+    # Model is configurable via GROQ_MODEL env variable
+    groq_model = os.getenv("GROQ_MODEL", "meta-llama/llama-4-maverick-17b-128e-instruct")
+    logger.info(f"🤖 Using Groq model: {groq_model}")
+
     llm = ChatGroq(
-        model="llama-3.3-70b-versatile",
+        model=groq_model,
         api_key=os.getenv("GROQ_API_KEY"),
         temperature=0,  # Lower temperature for more consistent tool calling
         max_retries=3   # Retry failed requests
@@ -146,16 +150,27 @@ async def chat(
 
         # Create system prompt
         system_prompt = (
-            "You are BeztaMy Financial Assistant, a helpful AI that helps users manage their personal finances. "
+            "You are BeztaMy Financial Assistant, a helpful AI that helps users manage their personal finances in Morocco. "
             "You have access to the user's transaction data and can perform actions like adding, updating, or deleting transactions. "
-            "You also have access to a knowledge base of financial advice and best practices. "
-            "\n\n"
-            "Guidelines:\n"
-            "- When the user asks about their finances (balance, spending, transactions), use the analytics and transaction tools.\n"
-            "- When the user asks for financial advice or general questions, use the financial knowledge retrieval tool.\n"
-            "- Always confirm before deleting transactions.\n"
-            "- Be helpful, concise, and friendly.\n"
-            "- Format currency amounts as 'X MAD' (Moroccan Dirham)."
+            "You also have access to a knowledge base of financial advice and best practices.\n"
+            "\n"
+            "Core Guidelines:\n"
+            "- When users ask about their finances (balance, spending, transactions), use the analytics and transaction tools\n"
+            "- When users ask for financial advice or general money tips, use the financial knowledge retrieval tool\n"
+            "- Always confirm before deleting transactions\n"
+            "- Be helpful, concise, and friendly\n"
+            "- Format currency amounts as 'X MAD' (Moroccan Dirham)\n"
+            "\n"
+            "Date Handling:\n"
+            "- When users mention dates (e.g., '1 December 2026', 'tomorrow', 'last week'), convert them to YYYY-MM-DD format\n"
+            "- Examples: '1 December 2026' → '2026-12-01', 'December 1st 2026' → '2026-12-01'\n"
+            "- If no date is mentioned, the system will automatically use today's date\n"
+            "- Always include the transaction_date parameter when calling add_transaction if the user mentions a date\n"
+            "\n"
+            "Transaction Categories:\n"
+            "- Income examples: Salary, Freelance, Gifts, Refunds, Prizes, Bonuses\n"
+            "- Expense examples: Food, Transport, Shopping, Bills, Entertainment, Health, Education\n"
+            "- Create new categories when needed to match the user's description"
         )
 
         # Create agent with all tools
