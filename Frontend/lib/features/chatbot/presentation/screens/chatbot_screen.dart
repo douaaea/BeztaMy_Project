@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_sidebar.dart';
 import '../../../../core/utils/responsive_helper.dart';
 import '../../../../core/constants.dart';
 import '../../../../shared/widgets/user_avatar_menu.dart';
+import '../../domain/providers/chatbot_provider.dart';
 
 class ChatbotScreen extends ConsumerStatefulWidget {
   const ChatbotScreen({super.key});
@@ -22,11 +23,13 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [
-    {'from': 'bot', 'text': 'Hello! How can I help you with your FinaTrack finances today?'}
+    {'from': 'bot', 'text': 'Hello! How can I help you with your BeztaMy finances today?'}
   ];
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
+  bool _isLoading = false;
   String? _lastRecordingPath;
+  String _sessionId = 'session_${DateTime.now().millisecondsSinceEpoch}';
 
   @override
   void dispose() {
@@ -185,8 +188,17 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                                           onPressed: _toggleRecording,
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.send, color: Colors.white, size: 18),
-                                          onPressed: _sendMessage,
+                                          icon: _isLoading
+                                              ? const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child: CircularProgressIndicator(
+                                                    color: Colors.white,
+                                                    strokeWidth: 2,
+                                                  ),
+                                                )
+                                              : const Icon(Icons.send, color: Colors.white, size: 18),
+                                          onPressed: _isLoading ? null : _sendMessage,
                                         ),
                                       ],
                                     ),
@@ -459,35 +471,76 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     );
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isLoading) return;
 
+    // Add user message to chat
     setState(() {
       _messages.add({'from': 'user', 'text': text});
       _controller.clear();
+      _isLoading = true;
     });
 
+    // Scroll to bottom
     Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 200,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
-
-    Future.delayed(const Duration(milliseconds: 600), () {
-      setState(() {
-        _messages.add({'from': 'bot', 'text': 'Thanks — I\'m fetching that for you. I will be right back with a summary.'});
-      });
-      Future.delayed(const Duration(milliseconds: 150), () {
+      if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent + 200,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
-      });
+      }
     });
+
+    try {
+      // Get chatbot service
+      final chatbotService = ref.read(chatbotServiceProvider);
+
+      // Send message to backend
+      final response = await chatbotService.sendMessage(
+        question: text,
+        sessionId: _sessionId,
+      );
+
+      // Add bot response to chat
+      if (mounted) {
+        setState(() {
+          _messages.add({'from': 'bot', 'text': response});
+          _isLoading = false;
+        });
+
+        // Scroll to bottom after response
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent + 200,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      // Handle errors
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'from': 'bot',
+            'text': 'Sorry, I encountered an error: ${e.toString()}. Please try again.'
+          });
+          _isLoading = false;
+        });
+
+        // Show error snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _toggleRecording() async {
