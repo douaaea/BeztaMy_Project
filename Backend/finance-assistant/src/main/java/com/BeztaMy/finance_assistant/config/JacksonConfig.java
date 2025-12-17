@@ -2,6 +2,7 @@ package com.BeztaMy.finance_assistant.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -13,8 +14,12 @@ public class JacksonConfig {
     @Primary
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
+        // Register JavaTimeModule for Java 8 date/time types
+        mapper.registerModule(new JavaTimeModule());
         // Write BigDecimal as plain numbers (not scientific notation)
         mapper.enable(SerializationFeature.WRITE_BIGDECIMAL_AS_PLAIN);
+        // Disable writing dates as timestamps
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         return mapper;
     }
 }
