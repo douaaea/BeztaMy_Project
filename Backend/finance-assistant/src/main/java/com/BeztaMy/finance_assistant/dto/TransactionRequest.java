@@ -31,18 +31,24 @@ public class TransactionRequest {
 
     private LocalDate endDate;
 
+    private LocalDate nextExecutionDate;
+
+    private Boolean isActive = true;
+
     public TransactionRequest() {
     }
 
     public TransactionRequest(Long categoryId,
-                              TransactionType type,
-                              BigDecimal amount,
-                              String description,
-                              String location,
-                              LocalDate transactionDate,
-                              Boolean isRecurring,
-                              Frequency frequency,
-                              LocalDate endDate) {
+            TransactionType type,
+            BigDecimal amount,
+            String description,
+            String location,
+            LocalDate transactionDate,
+            Boolean isRecurring,
+            Frequency frequency,
+            LocalDate endDate,
+            LocalDate nextExecutionDate,
+            Boolean isActive) {
 
         this.categoryId = categoryId;
         this.type = type;
@@ -52,7 +58,10 @@ public class TransactionRequest {
         this.transactionDate = transactionDate;
         this.isRecurring = isRecurring;
         this.frequency = frequency;
+        this.frequency = frequency;
         this.endDate = endDate;
+        this.nextExecutionDate = nextExecutionDate;
+        this.isActive = isActive;
     }
 
     public Long getCategoryId() {
@@ -125,5 +134,21 @@ public class TransactionRequest {
 
     public void setEndDate(LocalDate endDate) {
         this.endDate = endDate;
+    }
+
+    public LocalDate getNextExecutionDate() {
+        return nextExecutionDate;
+    }
+
+    public void setNextExecutionDate(LocalDate nextExecutionDate) {
+        this.nextExecutionDate = nextExecutionDate;
+    }
+
+    public Boolean getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(Boolean isActive) {
+        this.isActive = isActive;
     }
 }

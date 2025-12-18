@@ -187,23 +187,28 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                        ),
                      ),
                      const SizedBox(height: 24),
-                     Container(
-                       padding: const EdgeInsets.all(16),
-                       decoration: BoxDecoration(
-                         color: Colors.grey[50], 
-                         borderRadius: BorderRadius.circular(12),
-                         border: Border.all(color: Colors.grey[200]!)
-                       ),
-                       child: Column(
-                        children: [
-                          _buildDetailRow(Icons.calendar_today, 'Date', transaction.transactionDate),
-                          if (transaction.description != null && transaction.description!.isNotEmpty)
-                            _buildDetailRow(Icons.description, 'Description', transaction.description!),
-                          if (transaction.location != null && transaction.location!.isNotEmpty)
-                            _buildDetailRow(Icons.location_on, 'Location', transaction.location!),
-                          if (transaction.isRecurring)
-                            _buildDetailRow(Icons.repeat, 'Recurring', transaction.frequency ?? 'Yes'),
-                        ],
+                     ConstrainedBox(
+                       constraints: const BoxConstraints(maxHeight: 200),
+                       child: SingleChildScrollView(
+                         child: Container(
+                           padding: const EdgeInsets.all(16),
+                           decoration: BoxDecoration(
+                             color: Colors.grey[50], 
+                             borderRadius: BorderRadius.circular(12),
+                             border: Border.all(color: Colors.grey[200]!)
+                           ),
+                           child: Column(
+                            children: [
+                              _buildDetailRow(Icons.calendar_today, 'Date', transaction.transactionDate),
+                              if (transaction.description != null && transaction.description!.isNotEmpty)
+                                _buildDetailRow(Icons.description, 'Description', transaction.description!),
+                              if (transaction.location != null && transaction.location!.isNotEmpty)
+                                _buildDetailRow(Icons.location_on, 'Location', transaction.location!),
+                              if (transaction.isRecurring)
+                                _buildDetailRow(Icons.repeat, 'Recurring', transaction.frequency ?? 'Yes'),
+                            ],
+                           ),
+                         ),
                        ),
                      ),
                    ],
@@ -241,16 +246,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: Colors.grey[400]),
           const SizedBox(width: 12),
           Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-          const Spacer(),
-          Flexible(
+          const SizedBox(width: 12),
+          Expanded(
             child: Text(
               value, 
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF171A1F)),
               textAlign: TextAlign.end,
+              softWrap: true,
             ),
           ),
         ],

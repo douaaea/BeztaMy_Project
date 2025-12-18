@@ -38,9 +38,15 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
   // Session
   String _sessionId = 'session_${DateTime.now().millisecondsSinceEpoch}';
 
+  // TtsService is updated via ref.read in initState
+
+  late final _sttService;
+
   @override
   void initState() {
     super.initState();
+    
+    _sttService = ref.read(sttServiceProvider);
 
     // Initialize STT (following documentation pattern)
     // Works on mobile, limited browser support on web
@@ -62,8 +68,7 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
   /// Initialize speech recognition once per screen load
   /// This follows the official speech_to_text documentation pattern
   void _initSpeech() async {
-    final sttService = ref.read(sttServiceProvider);
-    await sttService.init();
+    await _sttService.init();
     if (mounted) {
       setState(() {
         // Trigger rebuild to update UI based on STT availability
@@ -77,8 +82,8 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     _scrollController.dispose();
 
     // Clean up STT service if it's listening
-    final sttService = ref.read(sttServiceProvider);
-    sttService.dispose();
+    // use stored reference instead of ref.read
+    _sttService.dispose();
 
     // TTS service is disposed by Riverpod provider
     super.dispose();

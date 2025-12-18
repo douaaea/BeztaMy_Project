@@ -79,9 +79,15 @@ public class TransactionController {
         transaction.setFrequency(request.getFrequency());
         transaction.setEndDate(request.getEndDate());
 
-        if (request.getIsRecurring() != null && request.getIsRecurring() && request.getFrequency() != null) {
-            transaction.setNextExecutionDate(request.getTransactionDate());
-            transaction.setIsActive(true);
+        if (request.getIsRecurring() != null && request.getIsRecurring()) {
+            if (request.getNextExecutionDate() != null) {
+                transaction.setNextExecutionDate(request.getNextExecutionDate());
+            } else {
+                transaction.setNextExecutionDate(request.getTransactionDate());
+            }
+            transaction.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        } else {
+            transaction.setIsActive(true); // Default active for non-recurring? Or relevant?
         }
 
         Transaction savedTransaction = transactionService.createTransaction(transaction);
@@ -105,7 +111,10 @@ public class TransactionController {
         transactionDetails.setTransactionDate(request.getTransactionDate());
         transactionDetails.setIsRecurring(request.getIsRecurring());
         transactionDetails.setFrequency(request.getFrequency());
+
         transactionDetails.setEndDate(request.getEndDate());
+        transactionDetails.setNextExecutionDate(request.getNextExecutionDate());
+        transactionDetails.setIsActive(request.getIsActive());
 
         Transaction updatedTransaction = transactionService.updateTransaction(id, transactionDetails);
         return ResponseEntity.ok(updatedTransaction);

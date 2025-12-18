@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:dio/dio.dart';
 
 import '../../core/constants.dart';
 import '../../core/utils/responsive_helper.dart';
@@ -55,6 +56,8 @@ class _WebAddTransactionState extends ConsumerState<WebAddTransaction> {
 
   int? _selectedCategoryId;
   String? _selectedFrequency;
+  
+  final Dio _dio = Dio();
 
   @override
   void initState() {
@@ -570,11 +573,55 @@ class _WebAddTransactionState extends ConsumerState<WebAddTransaction> {
     );
   }
 
-  void _handleMapTap(LatLng latLng) {
+  void _handleMapTap(LatLng latLng) async {
     setState(() {
       _selectedLatLng = latLng;
-      _locationController.text = '${latLng.latitude.toStringAsFixed(4)}, ${latLng.longitude.toStringAsFixed(4)}';
+      // Show loading or coordinates initially
+      _locationController.text = 'Fetching address...';
     });
+    
+    try {
+      final address = await _getAddressFromCoordinates(latLng);
+      if (mounted && _selectedLatLng == latLng) {
+        setState(() {
+          _locationController.text = address;
+        });
+      }
+    } catch (e) {
+      if (mounted && _selectedLatLng == latLng) {
+         setState(() {
+          _locationController.text = '${latLng.latitude.toStringAsFixed(4)}, ${latLng.longitude.toStringAsFixed(4)}';
+        });
+      }
+    }
+  }
+
+  Future<String> _getAddressFromCoordinates(LatLng latLng) async {
+    try {
+      final response = await _dio.get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: {
+          'format': 'json',
+          'lat': latLng.latitude,
+          'lon': latLng.longitude,
+        },
+        options: Options(
+          headers: {'User-Agent': 'BeztaMy/1.0'},
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data != null && data['display_name'] != null) {
+          return data['display_name'];
+        }
+      }
+      return '${latLng.latitude.toStringAsFixed(4)}, ${latLng.longitude.toStringAsFixed(4)}';
+    } catch (e) {
+      // Fallback to coordinates on error
+      return '${latLng.latitude.toStringAsFixed(4)}, ${latLng.longitude.toStringAsFixed(4)}';
+    }
   }
 
   InputDecoration _dropdownDecoration() {

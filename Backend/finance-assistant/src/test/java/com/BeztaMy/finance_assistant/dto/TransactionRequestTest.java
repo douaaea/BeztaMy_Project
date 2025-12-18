@@ -32,8 +32,9 @@ class TransactionRequestTest {
                 date,
                 true,
                 Frequency.MONTHLY,
-                endDate
-        );
+                endDate,
+                null,
+                true);
 
         assertEquals(1L, request.getCategoryId());
         assertEquals(TransactionType.EXPENSE, request.getType());
@@ -43,7 +44,10 @@ class TransactionRequestTest {
         assertEquals(date, request.getTransactionDate());
         assertTrue(request.getIsRecurring());
         assertEquals(Frequency.MONTHLY, request.getFrequency());
+        assertEquals(Frequency.MONTHLY, request.getFrequency());
         assertEquals(endDate, request.getEndDate());
+        assertNull(request.getNextExecutionDate());
+        assertTrue(request.getIsActive());
     }
 
     @Test
