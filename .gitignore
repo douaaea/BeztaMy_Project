@@ -1,0 +1,45 @@
+# Environment variables
+.env
+*.env
+.env.*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Database
+*.sqlite3
+*.db
+
+# Python egg info
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node modules (if any)
+node_modules/
+
+# Build outputs
+build/
+dist/
+target/
+*.class
+*.jar
+*.war
