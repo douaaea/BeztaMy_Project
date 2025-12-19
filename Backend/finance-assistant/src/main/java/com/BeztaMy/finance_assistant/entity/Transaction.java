@@ -6,9 +6,11 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "transactions")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Transaction {
 
     @Id
@@ -31,6 +33,7 @@ public class Transaction {
 
     private String description;
 
+    @Column(length = 1000)
     private String location;
 
     @Column(nullable = false)
@@ -65,24 +68,26 @@ public class Transaction {
     }
 
     // Constructeurs
-    public Transaction() {}
+    public Transaction() {
+    }
 
-    // si tu veux garder un constructeur complet, tu le fais avec Category (pas categoryId)
+    // si tu veux garder un constructeur complet, tu le fais avec Category (pas
+    // categoryId)
     public Transaction(Long id,
-                       Long userId,
-                       Category category,
-                       TransactionType type,
-                       BigDecimal amount,
-                       String description,
-                       String location,
-                       LocalDate transactionDate,
-                       Boolean isRecurring,
-                       Frequency frequency,
-                       LocalDate nextExecutionDate,
-                       LocalDate endDate,
-                       Boolean isActive,
-                       LocalDateTime createdAt,
-                       LocalDateTime updatedAt) {
+            Long userId,
+            Category category,
+            TransactionType type,
+            BigDecimal amount,
+            String description,
+            String location,
+            LocalDate transactionDate,
+            Boolean isRecurring,
+            Frequency frequency,
+            LocalDate nextExecutionDate,
+            LocalDate endDate,
+            Boolean isActive,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.category = category;

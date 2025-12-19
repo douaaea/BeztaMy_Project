@@ -4,12 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants.dart';
 import 'routes/app_router.dart';
 
-void main() {
-  runApp(
-    const ProviderScope(
-      child: BeztaMyApp(),
-    ),
-  );
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+void main() async {
+  await dotenv.load(fileName: ".env");
+  runApp(const ProviderScope(child: BeztaMyApp()));
 }
 
 class BeztaMyApp extends ConsumerWidget {

@@ -1,14 +1,16 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:record/record.dart';
+
+import 'package:audioplayers/audioplayers.dart'; // For PlayerState
 
 import '../../../../shared/widgets/app_sidebar.dart';
 import '../../../../core/utils/responsive_helper.dart';
 import '../../../../core/constants.dart';
 import '../../../../shared/widgets/user_avatar_menu.dart';
+import '../../../auth/domain/providers/auth_provider.dart';
+import '../../domain/providers/chatbot_provider.dart';
+import '../../domain/providers/audio_providers.dart';
 
 class ChatbotScreen extends ConsumerStatefulWidget {
   const ChatbotScreen({super.key});
@@ -22,17 +24,68 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [
-    {'from': 'bot', 'text': 'Hello! How can I help you with your FinaTrack finances today?'}
+    {
+      'from': 'bot',
+      'text': 'Hello! How can I help you with your BeztaMy finances today?',
+    },
   ];
-  final AudioRecorder _audioRecorder = AudioRecorder();
-  bool _isRecording = false;
-  String? _lastRecordingPath;
+
+  // Audio State
+  bool _isListening = false;
+  bool _isLoading = false;
+  String? _playingText;
+
+  // Session
+  String _sessionId = 'session_${DateTime.now().millisecondsSinceEpoch}';
+
+  // TtsService is updated via ref.read in initState
+
+  late final _sttService;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _sttService = ref.read(sttServiceProvider);
+
+    // Initialize STT (following documentation pattern)
+    // Works on mobile, limited browser support on web
+    _initSpeech();
+
+    // Listen to player state to reset playing icon
+    final ttsService = ref.read(ttsServiceProvider);
+    ttsService.onPlayerStateChanged.listen((state) {
+      if (state == PlayerState.completed || state == PlayerState.stopped) {
+        if (mounted) {
+          setState(() {
+            _playingText = null;
+          });
+        }
+      }
+    });
+  }
+
+  /// Initialize speech recognition once per screen load
+  /// This follows the official speech_to_text documentation pattern
+  void _initSpeech() async {
+    await _sttService.init();
+    if (mounted) {
+      setState(() {
+        // Trigger rebuild to update UI based on STT availability
+      });
+    }
+  }
 
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
-    _audioRecorder.dispose();
+
+    // Clean up STT service if it's listening
+    // use stored reference instead of ref.read
+    _sttService.dispose();
+
+    // TTS service is disposed by Riverpod provider
     super.dispose();
   }
 
@@ -58,7 +111,10 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Row(
                       children: [
-                        Image.asset('assets/images/beztami_logo.png', height: 48),
+                        Image.asset(
+                          'assets/images/beztami_logo.png',
+                          height: 48,
+                        ),
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Column(
@@ -66,13 +122,19 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                             children: [
                               Text(
                                 'Chat with BeztaMy Assistant',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                               SizedBox(height: 2),
                               Text(
                                 'AI insights tailored to your finances',
-                                style: TextStyle(fontSize: 13, color: Color(0xFF6F6F6F)),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF6F6F6F),
+                                ),
                               ),
                             ],
                           ),
@@ -88,7 +150,10 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                 ],
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 24,
+                    ),
                     child: Center(
                       child: Container(
                         constraints: const BoxConstraints(maxWidth: 980),
@@ -113,23 +178,44 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                                 itemBuilder: (context, index) {
                                   final msg = _messages[index];
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 18.0),
-                                    child: msg['from'] == 'bot' ? _buildBotMessage(msg['text']!) : _buildUserMessage(msg['text']!),
+                                    padding: const EdgeInsets.only(
+                                      bottom: 18.0,
+                                    ),
+                                    child: msg['from'] == 'bot'
+                                        ? _buildBotMessage(msg['text']!)
+                                        : _buildUserMessage(msg['text']!),
                                   );
                                 },
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
                               child: Wrap(
                                 spacing: 12,
                                 runSpacing: 12,
                                 children: [
-                                  _buildQuickAction(Icons.auto_graph, 'Summarize my spending'),
-                                  _buildQuickAction(Icons.restaurant, 'How much on food last month?'),
-                                  _buildQuickAction(Icons.warning_amber, 'Largest expenses'),
-                                  _buildQuickAction(Icons.receipt_long, 'Where is my income report?'),
-                                  _buildQuickAction(Icons.savings, 'Help me set a budget'),
+                                  _buildQuickAction(
+                                    Icons.auto_graph,
+                                    'Summarize my spending',
+                                  ),
+                                  _buildQuickAction(
+                                    Icons.restaurant,
+                                    'How much on food last month?',
+                                  ),
+                                  _buildQuickAction(
+                                    Icons.warning_amber,
+                                    'Largest expenses',
+                                  ),
+                                  _buildQuickAction(
+                                    Icons.receipt_long,
+                                    'Where is my income report?',
+                                  ),
+                                  _buildQuickAction(
+                                    Icons.savings,
+                                    'Help me set a budget',
+                                  ),
                                 ],
                               ),
                             ),
@@ -144,16 +230,21 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                                       height: 56,
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFFAFAFB),
-                                        border: Border.all(color: const Color(0xFFBDC1CA)),
+                                        border: Border.all(
+                                          color: const Color(0xFFBDC1CA),
+                                        ),
                                         borderRadius: BorderRadius.circular(14),
                                       ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
                                       child: Center(
                                         child: TextField(
                                           controller: _controller,
                                           onSubmitted: (_) => _sendMessage(),
                                           decoration: const InputDecoration(
-                                            hintText: 'Type your message here...',
+                                            hintText:
+                                                'Type your message here...',
                                             hintStyle: TextStyle(
                                               fontFamily: 'Lato',
                                               fontSize: 14,
@@ -169,24 +260,50 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                                   Container(
                                     decoration: BoxDecoration(
                                       gradient: const LinearGradient(
-                                        colors: [Color(0xFF43A047), Color(0xFF2E7D32)],
+                                        colors: [
+                                          Color(0xFF43A047),
+                                          Color(0xFF2E7D32),
+                                        ],
                                       ),
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                     child: Row(
                                       children: [
+                                        // Mic button (works on mobile, limited on web)
                                         IconButton(
                                           icon: Icon(
-                                            _isRecording ? Icons.stop_circle_outlined : Icons.mic_none,
-                                            color: _isRecording ? const Color(0xFFFFCDD2) : Colors.white,
+                                            _isListening
+                                                ? Icons.mic
+                                                : Icons.mic_none,
+                                            color: _isListening
+                                                ? Colors.red
+                                                : Colors.white,
                                             size: 20,
                                           ),
-                                          tooltip: _isRecording ? 'Stop recording' : 'Start voice message',
-                                          onPressed: _toggleRecording,
+                                          tooltip: _isListening
+                                              ? 'Stop listening'
+                                              : 'Speak',
+                                          onPressed: _toggleListening,
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.send, color: Colors.white, size: 18),
-                                          onPressed: _sendMessage,
+                                          icon: _isLoading
+                                              ? const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : const Icon(
+                                                  Icons.send,
+                                                  color: Colors.white,
+                                                  size: 18,
+                                                ),
+                                          onPressed: _isLoading
+                                              ? null
+                                              : _sendMessage,
                                         ),
                                       ],
                                     ),
@@ -194,27 +311,25 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                                 ],
                               ),
                             ),
-                            if (_isRecording)
+                            if (_isListening)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: const [
-                                    Icon(Icons.fiber_manual_record, color: Color(0xFFE53935), size: 16),
+                                    Icon(
+                                      Icons.fiber_manual_record,
+                                      color: Color(0xFFE53935),
+                                      size: 16,
+                                    ),
                                     SizedBox(width: 6),
                                     Text(
-                                      'Recording… tap stop to finish',
-                                      style: TextStyle(color: Color(0xFFE53935)),
+                                      'Listening...',
+                                      style: TextStyle(
+                                        color: Color(0xFFE53935),
+                                      ),
                                     ),
                                   ],
-                                ),
-                              ),
-                            if (_lastRecordingPath != null && !_isRecording)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Text(
-                                  'Saved voice note: ${_lastRecordingPath!.split(Platform.pathSeparator).last}',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF565D6D)),
                                 ),
                               ),
                           ],
@@ -256,12 +371,15 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
         children: [
           Image.asset('assets/images/beztami_logo.png', height: 36),
           const SizedBox(width: 10),
-          const Text(
-            'Chat with BeztaMy Assistant',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF171A1F),
+          const Expanded(
+            child: Text(
+              'Chat with BeztaMy Assistant',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF171A1F),
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -276,12 +394,11 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
   }
 
   Widget _buildDrawer() {
-    return const Drawer(
-      child: AppSidebar(activeItem: 'Chatbot'),
-    );
+    return const Drawer(child: AppSidebar(activeItem: 'Chatbot'));
   }
 
   Widget _buildBotMessage(String text) {
+    final isPlaying = _playingText == text;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -311,7 +428,25 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
+        InkWell(
+          onTap: () => _playText(text),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Icon(
+              isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
+              size: 20,
+              color: isPlaying ? Colors.red : const Color(0xFF565D6D),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -431,7 +566,11 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                 children: [
                   Text(
                     'Need inspiration?',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
                   SizedBox(height: 4),
                   Text(
@@ -449,7 +588,9 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Try'),
             ),
@@ -459,75 +600,178 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     );
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isLoading) return;
 
+    // Add user message to chat
     setState(() {
       _messages.add({'from': 'user', 'text': text});
       _controller.clear();
+      _isLoading = true;
     });
 
+    // Scroll to bottom
     Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 200,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
-
-    Future.delayed(const Duration(milliseconds: 600), () {
-      setState(() {
-        _messages.add({'from': 'bot', 'text': 'Thanks — I\'m fetching that for you. I will be right back with a summary.'});
-      });
-      Future.delayed(const Duration(milliseconds: 150), () {
+      if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent + 200,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
-      });
+      }
     });
+
+    try {
+      // Get chatbot service and user ID
+      final chatbotService = ref.read(chatbotServiceProvider);
+      final userId = ref.read(userIdProvider);
+
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Send message to backend
+      final response = await chatbotService.sendMessage(
+        question: text,
+        sessionId: _sessionId,
+        userId: userId,
+      );
+
+      // Add bot response to chat
+      if (mounted) {
+        setState(() {
+          _messages.add({'from': 'bot', 'text': response});
+          _isLoading = false;
+        });
+
+        // Scroll to bottom after response
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent + 200,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      // Handle errors
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'from': 'bot',
+            'text':
+                'Sorry, I encountered an error: ${e.toString()}. Please try again.',
+          });
+          _isLoading = false;
+        });
+
+        // Show error snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  Future<void> _toggleRecording() async {
-    if (_isRecording) {
-      final path = await _audioRecorder.stop();
+  Future<void> _playText(String text) async {
+    final ttsService = ref.read(ttsServiceProvider);
+
+    if (_playingText == text) {
+      await ttsService.stop();
       setState(() {
-        _isRecording = false;
-        _lastRecordingPath = path;
+        _playingText = null;
       });
-      if (path != null && mounted) {
+      return;
+    }
+
+    try {
+      setState(() {
+        _playingText = text;
+      });
+      await ttsService.play(text);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _playingText = null;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Audio play failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _toggleListening() async {
+    final sttService = ref.read(sttServiceProvider);
+
+    // Check if speech recognition is available (following doc pattern)
+    if (!sttService.isEnabled) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Voice note recorded (${path.split(Platform.pathSeparator).last})')),
+          const SnackBar(
+            content: Text('Speech recognition not available on this device'),
+            backgroundColor: Colors.orange,
+          ),
         );
       }
       return;
     }
 
-    final hasPermission = await _audioRecorder.hasPermission();
-    if (!hasPermission) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Microphone permission denied. Please enable it to record.')),
-      );
+    if (_isListening) {
+      await sttService.stopListening();
+      setState(() {
+        _isListening = false;
+      });
       return;
     }
 
-    final tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/bezta_voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    try {
+      await sttService.startListening((text) {
+        if (mounted) {
+          setState(() {
+            // Replace text field content with recognized speech
+            _controller.text = text;
+            // Move cursor to end
+            _controller.selection = TextSelection.fromPosition(
+              TextPosition(offset: _controller.text.length),
+            );
+          });
+        }
+      });
+      setState(() {
+        _isListening = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isListening = false;
+        });
 
-    await _audioRecorder.start(
-      const RecordConfig(
-        encoder: AudioEncoder.aacLc,
-        bitRate: 128000,
-        sampleRate: 44100,
-      ),
-      path: filePath,
-    );
-    setState(() {
-      _isRecording = true;
-      _lastRecordingPath = null;
-    });
+        // Better error message for web users
+        String errorMessage = 'Speech recognition failed';
+        if (kIsWeb) {
+          errorMessage = 'Microphone access denied. Click the 🔒 icon in address bar → Allow microphone';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    }
   }
 }

@@ -2,9 +2,11 @@ package com.BeztaMy.finance_assistant.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "categories")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Category {
 
     @Id
@@ -33,7 +35,7 @@ public class Category {
     }
 
     public Category(Long id, Long userId, String name, String type,
-                    String icon, Boolean isDefault, LocalDateTime createdAt) {
+            String icon, Boolean isDefault, LocalDateTime createdAt) {
         this.id = id;
         this.userId = userId;
         this.name = name;
