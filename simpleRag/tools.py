@@ -310,10 +310,8 @@ def create_analytics_tools(backend_client: BackendClient):
 
     @tool
     def get_balance_summary() -> str:
-        """Get the user's current financial balance with total income and expenses.
-
-        Returns:
-            Current balance, total income, and total expenses in MAD
+        """Get the user's current financial balance, budget status, total income and expenses.
+        Use this when the user asks about their balance, budget, or overall financial status.
         """
         logger.info(f"🔧 TOOL: get_balance_summary()")
         try:
