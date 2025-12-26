@@ -196,6 +196,7 @@ class _WebAddTransactionState extends ConsumerState<WebAddTransaction> {
           const SizedBox(height: 12),
           _buildTonalField(
             child: TextField(
+              key: const Key('descField'),
               controller: _descriptionController,
               decoration: InputDecoration(
                 hintText: _isExpense ? 'e.g. Coffee with a friend' : 'e.g. Salary',
@@ -278,6 +279,7 @@ class _WebAddTransactionState extends ConsumerState<WebAddTransaction> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
+              key: const Key('saveTransactionButton'),
               onPressed: _isSubmitting ? null : _handleSubmit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _isExpense ? const Color(0xFFE53935) : const Color(0xFF1B5E20),
@@ -317,6 +319,7 @@ class _WebAddTransactionState extends ConsumerState<WebAddTransaction> {
         children: [
           Expanded(
             child: _EntryChip(
+              key: const Key('expenseChoice'),
               label: 'Expense',
               isActive: _isExpense,
               activeColor: const Color(0xFFE53935),
@@ -329,6 +332,7 @@ class _WebAddTransactionState extends ConsumerState<WebAddTransaction> {
           const SizedBox(width: 8),
           Expanded(
             child: _EntryChip(
+              key: const Key('incomeChoice'),
               label: 'Income',
               isActive: !_isExpense,
               activeColor: const Color(0xFF1B5E20),
@@ -364,6 +368,7 @@ class _WebAddTransactionState extends ConsumerState<WebAddTransaction> {
           const SizedBox(width: 16),
           Expanded(
             child: TextField(
+              key: const Key('amountField'),
               controller: _amountController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(border: InputBorder.none, hintText: 'Enter amount'),
@@ -1015,6 +1020,7 @@ class _EntryChip extends StatelessWidget {
   final VoidCallback onTap;
 
   const _EntryChip({
+    super.key,
     required this.label,
     required this.isActive,
     required this.activeColor,

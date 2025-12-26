@@ -113,6 +113,7 @@ class AppSidebar extends ConsumerWidget {
                     const SizedBox(height: 20),
                     _buildNavItem(
                       context,
+                      key: const Key('navDashboard'),
                       icon: Icons.dashboard,
                       label: 'Dashboard',
                       isActive: activeItem == 'Dashboard',
@@ -121,6 +122,7 @@ class AppSidebar extends ConsumerWidget {
                     const SizedBox(height: 24),
                     _buildNavItem(
                       context,
+                      key: const Key('navTransactions'),
                       icon: Icons.swap_horiz,
                       label: 'Transactions',
                       isActive: activeItem == 'Transactions',
@@ -129,6 +131,7 @@ class AppSidebar extends ConsumerWidget {
                     const SizedBox(height: 24),
                     _buildNavItem(
                       context,
+                      key: const Key('navAddEntry'),
                       icon: Icons.add_circle_outline,
                       label: 'Add Entry',
                       isActive: activeItem == 'Add Entry',
@@ -137,6 +140,7 @@ class AppSidebar extends ConsumerWidget {
                     const SizedBox(height: 24),
                     _buildNavItem(
                       context,
+                      key: const Key('navChatbot'),
                       icon: Icons.chat_bubble_outline,
                       label: 'Chatbot',
                       isActive: activeItem == 'Chatbot',
@@ -145,6 +149,7 @@ class AppSidebar extends ConsumerWidget {
                     const SizedBox(height: 24),
                     _buildNavItem(
                       context,
+                      key: const Key('navProfile'),
                       icon: Icons.person_outline,
                       label: 'Profile',
                       isActive: activeItem == 'Profile',
@@ -153,6 +158,7 @@ class AppSidebar extends ConsumerWidget {
                     const SizedBox(height: 16),
             _buildNavItem(
               context,
+              key: const Key('navLogOut'),
               icon: Icons.logout,
               label: 'Log Out',
               isActive: false, // Log out is an action, not a navigable state usually, or we can leave it false
@@ -230,12 +236,14 @@ class AppSidebar extends ConsumerWidget {
 
   Widget _buildNavItem(
     BuildContext context, {
+    Key? key,
     required IconData icon,
     required String label,
     required bool isActive,
     required VoidCallback onTap,
   }) {
     return InkWell(
+      key: key,
       onTap: onTap,
       child: Container(
         width: 223,

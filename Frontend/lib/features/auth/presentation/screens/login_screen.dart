@@ -220,6 +220,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _buildLabel('Email Address'),
           const SizedBox(height: 6),
           TextField(
+            key: const Key('emailField'),
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             enabled: !_isLoading,
@@ -229,6 +230,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _buildLabel('Password'),
           const SizedBox(height: 6),
           TextField(
+            key: const Key('passwordField'),
             controller: _passwordController,
             obscureText: _obscurePassword,
             enabled: !_isLoading,
@@ -266,6 +268,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
+              key: const Key('signInButton'),
               onPressed: _isLoading ? null : _handleLogin,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1B5E20),
@@ -296,6 +299,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   style: TextStyle(color: Color(0xFF565D6D)),
                 ),
                 GestureDetector(
+                  key: const Key('createAccountLink'),
                   onTap: () => context.go('/signup'),
                   child: const Text(
                     'Create an account',

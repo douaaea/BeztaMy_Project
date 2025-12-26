@@ -267,22 +267,23 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: _buildField('First Name', _firstNameController, hint: 'Enter your first name')),
+              Expanded(child: _buildField('First Name', _firstNameController, hint: 'Enter your first name', keyName: 'firstNameField')),
               const SizedBox(width: 16),
-              Expanded(child: _buildField('Last Name', _lastNameController, hint: 'Enter your last name')),
+              Expanded(child: _buildField('Last Name', _lastNameController, hint: 'Enter your last name', keyName: 'lastNameField')),
             ],
           ),
           const SizedBox(height: 18),
-          _buildField('Email Address', _emailController, hint: 'you@example.com', keyboardType: TextInputType.emailAddress),
+          _buildField('Email Address', _emailController, hint: 'you@example.com', keyboardType: TextInputType.emailAddress, keyName: 'signupEmailField'),
           const SizedBox(height: 18),
-          _buildField('Phone Number', _telephoneController, hint: '+1234567890', keyboardType: TextInputType.phone),
+          _buildField('Phone Number', _telephoneController, hint: '+1234567890', keyboardType: TextInputType.phone, keyName: 'phoneField'),
           const SizedBox(height: 18),
-          _buildField('Status', _statusController, hint: 'e.g. Employee, Freelancer', keyboardType: TextInputType.text),
+          _buildField('Status', _statusController, hint: 'e.g. Employee, Freelancer', keyboardType: TextInputType.text, keyName: 'statusField'),
           const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
                 child: _buildPasswordField(
+                  keyName: 'signupPasswordField',
                   label: 'Password',
                   controller: _passwordController,
                   obscure: _obscurePassword,
@@ -292,6 +293,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               const SizedBox(width: 16),
               Expanded(
                 child: _buildPasswordField(
+                  keyName: 'confirmPasswordField',
                   label: 'Confirm Password',
                   controller: _confirmPasswordController,
                   obscure: _obscureConfirmPassword,
@@ -305,6 +307,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Checkbox(
+                key: const Key('termsCheckbox'),
                 value: _acceptedTerms,
                 onChanged: (value) => setState(() => _acceptedTerms = value ?? false),
                 activeColor: const Color(0xFF1B4332),
@@ -338,6 +341,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
+              key: const Key('createAccountButton'),
               onPressed: (_acceptedTerms && !_isLoading) ? _handleSignup : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1B5E20),
@@ -369,6 +373,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   style: TextStyle(color: Color(0xFF565D6D)),
                 ),
                 GestureDetector(
+                  key: const Key('goToLoginLink'),
                   onTap: () => context.go('/login'),
                   child: const Text(
                     'Sign in',
@@ -391,6 +396,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     TextEditingController controller, {
     String? hint,
     TextInputType? keyboardType,
+    String? keyName,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,6 +412,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ),
         const SizedBox(height: 6),
         TextField(
+          key: keyName != null ? Key(keyName) : null,
           controller: controller,
           keyboardType: keyboardType,
           enabled: !_isLoading,
@@ -420,6 +427,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     required TextEditingController controller,
     required bool obscure,
     required VoidCallback onToggle,
+    String? keyName,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,6 +443,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ),
         const SizedBox(height: 6),
         TextField(
+          key: keyName != null ? Key(keyName) : null,
           controller: controller,
           obscureText: obscure,
           decoration: _fieldDecoration('At least 8 characters').copyWith(
