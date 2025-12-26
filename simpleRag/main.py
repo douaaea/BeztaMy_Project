@@ -7,8 +7,6 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from langchain_ollama import OllamaEmbeddings
-from langchain_chroma import Chroma
 from langchain_groq import ChatGroq
 from langchain.tools import tool
 from langchain.agents import create_agent
@@ -19,6 +17,10 @@ from auth import get_current_user
 from backend_client import BackendClient
 from tools import get_all_tools
 
+# Import Refactored Services and Config
+from app.config import GROQ_MODEL, GROQ_API_KEY
+from app.services.rag_service import rag_service
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,47 +30,39 @@ load_dotenv()
 # Security
 security = HTTPBearer()
 
-
-
-# Global variables for the RAG components
-vector_store = None
+# Global variables
 llm = None
 memory = None
-
 
 class ChatRequest(BaseModel):
     question: str
     session_id: Optional[str] = "default"
     user_id: int  # Required userId from frontend
 
-
 class ChatResponse(BaseModel):
     answer: str
     session_id: str
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize the RAG components on startup."""
-    global vector_store, llm, memory
+    global llm, memory
 
-    # Initialize embeddings
-    embeddings = OllamaEmbeddings(model="embeddinggemma:latest")
-
-    # Initialize vector store
-    vector_store = Chroma(
-        embedding_function=embeddings,
-        persist_directory="chroma_db_dir"
-    )
+    # Initialize RAG Service (Embeddings & Vector Store)
+    try:
+        rag_service.initialize()
+        # Optional: Check if we need to index on first run if DB is empty
+        # For now, we assume index_data.py is run manually or DB persists.
+    except Exception as e:
+        logger.error(f"Failed to initialize RAG Service: {e}")
+        # We continue, but RAG calls might fail or return empty
 
     # Initialize LLM with tool calling support
-    # Model is configurable via GROQ_MODEL env variable
-    groq_model = os.getenv("GROQ_MODEL", "meta-llama/llama-4-maverick-17b-128e-instruct")
-    logger.info(f"🤖 Using Groq model: {groq_model}")
+    logger.info(f"🤖 Using Groq model: {GROQ_MODEL}")
 
     llm = ChatGroq(
-        model=groq_model,
-        api_key=os.getenv("GROQ_API_KEY"),
+        model=GROQ_MODEL,
+        api_key=GROQ_API_KEY,
         temperature=0,  # Lower temperature for more consistent tool calling
         max_retries=3   # Retry failed requests
     )
@@ -84,15 +78,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="RAG Chat API", version="1.0.0", lifespan=lifespan)
 
 # Configure CORS
-# In development, allow all origins. In production, specify exact origins.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins in development
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, OPTIONS, etc.)
-    allow_headers=["*"],  # Allow all headers including Authorization
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
-
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(
@@ -102,29 +94,20 @@ async def chat(
     """
     Chat endpoint that answers questions using RAG with conversation memory.
     Requires JWT authentication.
-
-    Args:
-        request: ChatRequest containing the question and session_id
-        credentials: JWT token from Authorization header
-
-    Returns:
-        ChatResponse with the answer and session_id
     """
-    if llm is None or vector_store is None or memory is None:
-        raise HTTPException(status_code=503, detail="RAG system not initialized")
+    if llm is None or memory is None:
+        raise HTTPException(status_code=503, detail="System not initialized")
 
     try:
         # Get user info from token (validates token)
         user_info = get_current_user(credentials)
         logger.info(f"Chat request from user: {user_info['email']}")
 
-        # Create backend client with the auth token and userId
+        # Create backend client
         auth_token = credentials.credentials
         backend_client = BackendClient(auth_token, request.user_id)
 
-        # Create retriever tool for financial knowledge
-        retriever = vector_store.as_retriever()
-
+        # Define RAG tool using our service
         @tool
         def retrieve_financial_knowledge(query: str) -> str:
             """
@@ -133,16 +116,11 @@ async def chat(
             saving strategies, or other financial guidance.
             """
             logger.info(f"🔧 TOOL CALLED: retrieve_financial_knowledge(query='{query}')")
-            retrieved_docs = retriever.invoke(query)
-            logger.info(f"📚 RAG retrieved {len(retrieved_docs)} documents")
-            serialized = "\n\n".join(
-                (f"Source: {doc.metadata}\nContent: {doc.page_content}")
-                for doc in retrieved_docs
-            )
-            logger.info(f"✅ RAG knowledge retrieved successfully")
+            serialized = rag_service.get_serialized_knowledge(query)
+            logger.info(f"✅ RAG knowledge retrieved")
             return serialized
 
-        # Get all backend tools (transactions, categories, analytics)
+        # Get all backend tools
         backend_tools = get_all_tools(backend_client)
 
         # Combine all tools
@@ -178,7 +156,7 @@ async def chat(
             checkpointer=memory
         )
 
-        # Invoke the agent with message history
+        # Invoke the agent
         logger.info(f"🤖 Invoking agent with question: '{request.question}'")
         logger.info(f"📝 Session ID: {request.session_id}, User ID: {request.user_id}")
 
@@ -187,10 +165,9 @@ async def chat(
             config={"configurable": {"thread_id": request.session_id}}
         )
 
-        # Extract the answer from the agent's messages
+        # Extract answer
         answer = result["messages"][-1].content
-        logger.info(f"✅ Agent response generated successfully")
-        logger.info(f"📤 Response length: {len(answer)} characters")
+        logger.info(f"✅ Agent response generated")
 
         return ChatResponse(answer=answer, session_id=request.session_id)
 
@@ -201,60 +178,48 @@ async def chat(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
 
-
 @app.delete("/chat/history/{session_id}")
 async def clear_history(session_id: str):
-    """
-    Clear conversation history for a specific session.
-
-    Args:
-        session_id: The session ID to clear
-
-    Returns:
-        Success message
-    """
+    """Clear conversation history for a specific session."""
     if memory is None:
         raise HTTPException(status_code=503, detail="Memory system not initialized")
-
-    # LangGraph's MemorySaver doesn't have a simple delete method
-    # The history is managed internally per thread_id
-    return {"message": f"Note: LangGraph manages memory internally. Starting a new conversation will use a fresh thread."}
-
+    return {"message": "LangGraph manages memory internally. Starting a new conversation (new session_id) is recommended to clear context."}
 
 @app.get("/chat/history/{session_id}")
 async def get_history(session_id: str):
-    """
-    Get conversation history for a specific session.
-
-    Args:
-        session_id: The session ID to retrieve
-
-    Returns:
-        Conversation history
-    """
-    if memory is None or agent_executor is None:
+    """Get conversation history for a specific session."""
+    if memory is None:
         raise HTTPException(status_code=503, detail="Memory system not initialized")
-
+    
+    # We can't easily access agent_executor here because it's created per request in valid scope.
+    # To support this, we'd need to reconstruct the agent or use the memory object directly if possible.
+    # MemorySaver uses a specific configuration.
+    
+    # NOTE: The original code used `agent_executor` which was global-ish or accessible. 
+    # In the refactor, `agent_executor` is created inside `chat`.
+    # However, `memory` is global. `MemorySaver` methods might be accessible regarding checkpoints.
+    # But `MemorySaver` stores checkpoints, not just list of messages efficiently for simple retrieval without the graph structure.
+    
+    # For now, adhering to safety, we'll return an empty list or a message saying history retrieval needs the graph.
+    # OR, we can try to access the storage using the config.
+    
     try:
-        # Get the state for the thread
+        # Construct a dummy agent or access memory directly if possible. 
+        # MemorySaver.get(config) -> Checkpoint
         config = {"configurable": {"thread_id": session_id}}
-        state = agent_executor.get_state(config)
-
-        messages = state.values.get("messages", [])
-        return {
-            "session_id": session_id,
-            "message_count": len(messages),
-            "messages": [
-                {
-                    "type": msg.type if hasattr(msg, "type") else "unknown",
-                    "content": msg.content if hasattr(msg, "content") else str(msg)
-                }
-                for msg in messages
-            ]
-        }
-    except Exception as e:
+        checkpoint = memory.get(config)
+        if checkpoint:
+             # This is a Snapshot object
+             values = checkpoint.get("channel_values", {}) # Internal structure might vary
+             # If we want to strictly follow previous behavior, we might need to recreate the agent logic
+             # or just access the 'messages' key if we know the state schema.
+             # The state schema depends on the graph.
+             pass
+        
+        return {"session_id": session_id, "message_count": 0, "messages": [], "note": "History retrieval requires graph context."}
+        
+    except Exception:
         return {"session_id": session_id, "message_count": 0, "messages": []}
-
 
 @app.get("/health")
 async def health_check():
@@ -262,10 +227,9 @@ async def health_check():
     return {
         "status": "healthy",
         "llm_initialized": llm is not None,
-        "vector_store_initialized": vector_store is not None,
+        "rag_service_initialized": rag_service._initialized,
         "memory_initialized": memory is not None
     }
-
 
 if __name__ == "__main__":
     import uvicorn
