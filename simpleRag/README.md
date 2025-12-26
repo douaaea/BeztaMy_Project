@@ -1,139 +1,107 @@
-# BeztaMy Financial Assistant - RAG Chat API
+# SimpleRAG - Financial Assistant
 
-A FastAPI-based Agentic RAG system that serves as the intelligence layer for the BeztaMy Personal Finance application. It combines Retrieval-Augmented Generation (RAG) for financial advice with tool-calling capabilities to manage user transactions and analytics.
+A RAG (Retrieval-Augmented Generation) based financial assistant for the BeztaMy project, specifically tailored for the Moroccan context. It combines a LangChain/LangGraph agent with a Spring Boot backend for transaction management and a ChromaDB vector store for financial knowledge retrieval.
 
-## Features
+## 📂 Architecture
 
-- **Agentic Workflow**: Uses LangGraph to orchestrate complex financial tasks.
-- **Transaction Management**:
-  - Add, update, and delete transactions using natural language.
-  - Automatic categorization of expenses and income.
-- **Financial Analytics**:
-  - Real-time balance checks.
-  - Spending breakdown by category.
-  - Monthly summaries and income/expense tracking.
-- **RAG-powered Financial Advice**: Answers questions based on a curated knowledge base of financial best practices (50/30/20 rule, saving tips, etc.).
-- **Conversation Memory**: Maintains context across multiple turns for a natural chat experience.
-- **Secure Integration**: Authenticates with the Spring Boot backend using JWT tokens.
-
-## Tech Stack
-
-- **FastAPI**: Web framework for the Chat API.
-- **LangChain & LangGraph**: Agent framework and stateful memory.
-- **Groq**: Fast inference with Llama 3 models.
-- **Chroma**: Vector database for RAG.
-- **Ollama**: Local embeddings (embeddinggemma).
-- **Spring Boot**: Backend service for user and transaction data (integration target).
-
-## Prerequisites
-
-1.  **Spring Boot Backend**: Must be running on `http://localhost:8085` (default) to handle auth and data persistence.
-2.  **Ollama**: Running locally with `embeddinggemma:latest` model.
-    ```bash
-    ollama pull embeddinggemma:latest
-    ollama serve
-    ```
-3.  **Groq API Key**: For the LLM.
-
-## Installation
-
-1.  Clone the repository and navigate to `simpleRag`:
-
-    ```bash
-    cd simpleRag
-    ```
-
-2.  Install dependencies using `uv`:
-
-    ```bash
-    uv sync
-    ```
-
-3.  Set environment variables:
-    ```bash
-    export GROQ_API_KEY="your-groq-api-key"
-    ```
-
-## Usage
-
-### 1. Start the Server
-
-```bash
-python main.py
-```
-
-Server runs on: `http://localhost:8000`
-
-### 2. API Endpoints
-
-#### **POST /chat** - Send Message
-
-Interacts with the financial assistant. Requires a valid JWT token from the Spring Boot backend.
-
-**Request:**
-
-```json
-{
-  "question": "I spent 150 MAD on groceries at Marjane",
-  "session_id": "chat_001",
-  "user_id": 1
-}
-```
-
-**Headers:**
-`Authorization: Bearer <YOUR_JWT_TOKEN>`
-
-**Response:**
-
-```json
-{
-  "answer": "I've added a transaction of 150 MAD for 'Groceries' at Marjane. Is there anything else?",
-  "session_id": "chat_001"
-}
-```
-
-**cURL Example:**
-
-```bash
-curl -X POST "http://localhost:8000/chat" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
-  -d '{
-    "question": "What is my current balance?",
-    "session_id": "test_session",
-    "user_id": 1
-  }'
-```
-
-#### **GET /chat/history/{session_id}** - Get History
-
-Retrieve the message history for a specific session.
-
-#### **GET /health** - Health Check
-
-Verifies system status and component initialization.
-
-## Testing
-
-The project includes a comprehensive test suite `test_api.py` that verifies RAG functionality, transaction tools, and error handling.
-
-**Note:** The test script requires a running Spring Boot backend to authenticate and get a real JWT token.
-
-1.  Update `TEST_USER` in `test_api.py` with valid credentials from your Spring Boot database.
-2.  Run the tests:
-    ```bash
-    python test_api.py
-    ```
-
-## Project Structure
+The project is organized efficiently to separate concerns:
 
 ```
 simpleRag/
-├── main.py              # FastAPI app & Agent definition
-├── tools.py             # Tool definitions (RAG + Backend tools)
-├── backend_client.py    # Client for Spring Boot API interaction
-├── auth.py              # JWT validation logic
-├── test_api.py          # E2E test suite
-├── data/                # Financial advice markdown (RAG source)
-└── chroma_db_dir/       # Vector store persistence
+├── app/                        # Application Core
+│   ├── services/               # Logic Services
+│   │   ├── intent_config.py    # Intent mapping logic
+│   │   └── rag_service.py      # RAG implementation (Embeddings, Retrieval)
+│   ├── auth.py                 # Authentication helpers
+│   ├── backend_client.py       # HTTP Client for Spring Boot API
+│   ├── config.py               # Configuration settings
+│   └── tools.py                # LangChain tools definitions
+├── data/                       # Knowledge Base (Markdown files)
+├── evaluation_ragas/           # Quality Evaluation
+│   ├── eval_rag_quality.py     # RAGAS evaluation script
+│   └── sample_dataset.json     # Test cases
+├── main.py                     # FastAPI Application Entry Point
+├── index_data.py               # Script to index documents
+├── test_rag.py                 # Script to verify retrieval
+└── .env.example                # Environment variables template
 ```
+
+## 🚀 Setup & Installation
+
+1.  **Prerequisites**:
+
+    - Python 3.10+
+    - [Ollama](https://ollama.com/) (for embeddings)
+    - Groq API Key (for the LLM)
+
+2.  **Install Dependencies**:
+
+    ```bash
+    pip install -r requirements.txt
+    # Or manually modules like: fastapi, uvicorn, langchain, langchain-groq, langchain-chroma, etc.
+    ```
+
+    _(Note: Ensure you have `uv` or `pip` set up)_
+
+3.  **Environment Variables**:
+    Copy `.env.example` to `.env` and fill in your keys:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+4.  **Backend Connection**:
+    Ensure the Spring Boot backend is running (default: `http://localhost:8085`).
+
+## 🧠 Knowledge Base
+
+- **Embeddings**: We use `embeddinggemma:latest` via **Ollama**.
+  ```bash
+  ollama serve
+  ollama pull embeddinggemma:latest
+  ```
+- **Vector Store**: [ChromaDB](https://www.trychroma.com/) (Persisted in `chroma_db_dir`).
+- **Indexing**: To load markdown files from `data/` into the database:
+  ```bash
+  python3 index_data.py
+  ```
+
+## 🏃‍♂️ Running the Server
+
+Start the FastAPI server:
+
+```bash
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API will be available at `http://localhost:8000`.
+
+## 🧪 Testing & Evaluation
+
+- **Quick Retrieval Test**:
+  ```bash
+  python3 test_rag.py
+  ```
+- **Quality Evaluation (RAGAS)**:
+  Evaluates Faithfulness, Relevance, Recall, and Precision.
+
+  ```bash
+  python3 evaluation_ragas/eval_rag_quality.py
+  ```
+
+  **Evaluation Summary:**
+
+  | Metric                | Q1   | Q2   | Q3   | Q4   | Q5   | Q6   |
+  | :-------------------- | :--- | :--- | :--- | :--- | :--- | :--- |
+  | **Faithfulness**      | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+  | **Relevance**         | 0.78 | 0.97 | 0.85 | 0.88 | 1.00 | 0.90 |
+  | **Context Recall**    | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+  | **Context Precision** | 1.00 | 1.00 | 1.00 | 1.00 | 0.70 | 1.00 |
+
+## 🛠️ Tech Stack
+
+- **Framework**: FastAPI
+- **RAG/LLM**: LangChain, LangGraph, Groq (Llama 3)
+- **Embeddings**: Ollama (Gemma)
+- **Vector DB**: Chroma
+- **Evaluation**: Ragas

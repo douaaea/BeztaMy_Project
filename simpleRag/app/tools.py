@@ -6,7 +6,7 @@ from typing import Optional, Literal
 import json
 import logging
 from pydantic import BaseModel, Field
-from backend_client import BackendClient
+from app.backend_client import BackendClient
 
 # Configure logging
 logger = logging.getLogger(__name__)

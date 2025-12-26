@@ -1,0 +1,86 @@
+[
+  {
+    "test_number": 1,
+    "question": "How should I adapt the 50/30/20 rule if I earn a junior salary of 8,000 DH in Morocco?",
+    "answer": "Error",
+    "ground_truth": "For a junior salary of 8,000 DH in Morocco, you should allocate: 50% to Needs (4,000 DH) for rent, transport, and groceries; 30% to Wants (2,400 DH) for caf\u00e9, shopping, and outings; and 20% to Savings (1,600 DH) for emergency fund and investments.",
+    "contexts": [],
+    "metrics": {
+      "faithfulness": NaN,
+      "answer_relevance": 0.0,
+      "context_recall": 0.0,
+      "context_precision": 0.0
+    },
+    "ragas_score": NaN
+  },
+  {
+    "test_number": 2,
+    "question": "What expense categories should I track for personal finance management in Morocco?",
+    "answer": "Error",
+    "ground_truth": "Essential categories include Housing & Utilities (35-40%), Food & Groceries (15-20%), Transportation (5-10%), and Healthcare (2-5%). Morocco-specific categories include Ramadan expenses, Aid Al-Adha, wedding gifts, and family support. Track discretionary spending like dining, shopping, and entertainment separately.",
+    "contexts": [],
+    "metrics": {
+      "faithfulness": NaN,
+      "answer_relevance": 0.0,
+      "context_recall": 0.0,
+      "context_precision": 0.0
+    },
+    "ragas_score": NaN
+  },
+  {
+    "test_number": 3,
+    "question": "What is the 'Budget Killer' when it comes to schooling in Morocco?",
+    "answer": "Error",
+    "ground_truth": "Schooling is considered a 'Budget Killer' in Morocco. Mission Fran\u00e7aise schools cost 40,000-60,000 DH/year per child plus registration fees. Private bilingual schools cost 1,500-4,000 DH/month. Even public schools often require supplementary tutoring costing 500-1,000 DH/month.",
+    "contexts": [],
+    "metrics": {
+      "faithfulness": NaN,
+      "answer_relevance": 0.0,
+      "context_recall": 0.0,
+      "context_precision": 0.0
+    },
+    "ragas_score": NaN
+  },
+  {
+    "test_number": 4,
+    "question": "What is a PEA and what are its tax benefits?",
+    "answer": "Error",
+    "ground_truth": "A PEA (Plan d'\u00c9pargne Actions) is a tax-advantaged investment account. The key benefit is that if you hold your investments for 5 years, all capital gains and dividends are 100% tax-free. The deposit limit is 2,000,000 DH.",
+    "contexts": [],
+    "metrics": {
+      "faithfulness": 0.5,
+      "answer_relevance": 0.0,
+      "context_recall": 0.0,
+      "context_precision": 0.0
+    },
+    "ragas_score": 0.125
+  },
+  {
+    "test_number": 5,
+    "question": "What are the main asset classes available for investment in Morocco?",
+    "answer": "Error",
+    "ground_truth": "The main asset classes in Morocco are: 1. Cash & Equivalents (Livret d'\u00e9pargne, DAT) which are low risk/return. 2. Bonds (Bons du Tr\u00e9sor, Obligations Priv\u00e9es) which are medium risk. 3. Stocks (Actions) on the Bourse de Casablanca which are high risk/return.",
+    "contexts": [],
+    "metrics": {
+      "faithfulness": NaN,
+      "answer_relevance": 0.0,
+      "context_recall": 0.0,
+      "context_precision": 0.0
+    },
+    "ragas_score": NaN
+  },
+  {
+    "test_number": 6,
+    "question": "How have OPCVM Actions performed in 2024?",
+    "answer": "Error",
+    "ground_truth": "In 2024, OPCVM Actions (Equity Mutual Funds) in Morocco had an exceptional year with a performance of approximately +22.6%. They are high risk and recommended for a 5+ year horizon.",
+    "contexts": [],
+    "metrics": {
+      "faithfulness": 0.0,
+      "answer_relevance": 0.0,
+      "context_recall": 0.0,
+      "context_precision": 0.0
+    },
+    "ragas_score": 0.0
+  }
+]

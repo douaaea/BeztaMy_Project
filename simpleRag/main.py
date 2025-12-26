@@ -13,9 +13,9 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 from dotenv import load_dotenv
 
-from auth import get_current_user
-from backend_client import BackendClient
-from tools import get_all_tools
+from app.auth import get_current_user
+from app.backend_client import BackendClient
+from app.tools import get_all_tools
 
 # Import Refactored Services and Config
 from app.config import GROQ_MODEL, GROQ_API_KEY
@@ -42,6 +42,8 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     session_id: str
+
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,6 +79,7 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI app
 app = FastAPI(title="RAG Chat API", version="1.0.0", lifespan=lifespan)
 
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -85,6 +88,29 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )
+
+class RetrieveRequest(BaseModel):
+    query: str
+    k: int = 3
+
+@app.post("/rag/retrieve")
+async def retrieve_contexts(request: RetrieveRequest):
+    """
+    Direct endpoint to retrieve contexts for a query.
+    Used primarily for evaluation purposes (RAGAS).
+    """
+    try:
+        # Retrieve documents
+        docs = rag_service.retrieve_knowledge(request.query, k=request.k)
+        
+        # Extract content
+        contexts = [doc.page_content for doc in docs]
+        
+        return {"contexts": contexts}
+    except Exception as e:
+        logger.error(f"Error retrieving contexts: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(
